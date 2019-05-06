@@ -336,3 +336,5 @@ void stop_weight(){
   digitalWrite(relay2, LOW);
   digitalWrite(relay3, LOW);
 }
+
+//------------ test adding to github
