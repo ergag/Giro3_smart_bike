@@ -1,9 +1,17 @@
 //Board : DO IT ESP32 DEVKIT V1
 
-//Library for HR Sensor
+
+//library for serial communication
+#include <HardwareSerial.h>
+HardwareSerial Comport(2);
+int received = 0;
+
+/*//Library for HR Sensor
 #include <Wire.h>
 #include "MAX30105.h"
 #include "heartRate.h"
+
+
 
 //-------------------------------------------------------------------------- heart beat sensor
 
@@ -17,10 +25,10 @@ long lastBeat = 0; //Time at which the last beat occurred
 float beatsPerMinute;
 int beatAvg;
 
-//--------------------------------------------------------------
+*/
 
 
-//LEDIndicator <---- don't remeber what is this for
+//LEDIndicator <---- don't remember what is this for
 int LED = 2;
 
 //-----------------------------------------------------------------------------------------------------------------------------Motor Driver (H-Bridge)   - Pin for H Brdige
@@ -51,7 +59,7 @@ int TOGGLEMOTOR = 18; // pull LOW for activate 'motor adjustment manual control'
 
 //-----------------------------------------------------------------------------------------------------------------------------Bike Speed Sensor & Variable
 int analog_value = 0;
-int ANALOG_PIN_0 = 33;    //<---- bike speed input pin, can be digital read HIGH or LOW 
+const int ANALOG_PIN_0 = 33;    //<---- bike speed input pin, can be digital read HIGH or LOW 
 unsigned long currentMillis = 0; // <--- timer to check from previous read
 unsigned long prevMillis = 0; // <--- timer to check from previous read
 unsigned long timing = 0; // <--- timer to check from previous read
@@ -65,6 +73,7 @@ int interval = 6000;
 //speed debug
 unsigned long debugSpeed = 0; 
 
+
 //-----------------------------------------------------------------------------------------------------------------------------Serial Input & motor detection (software based)
 byte dataByte = 0;
 int level = 1000;
@@ -76,6 +85,8 @@ int automove_inc = 0;
 unsigned long standbyMillis = 0;
 unsigned long standbyInterval = 70000;
 int standbyMode = 0;
+
+
  
 void setup()
 {
@@ -96,12 +107,13 @@ void setup()
   pinMode(relay3, OUTPUT);
   digitalWrite(relay2, LOW);
   digitalWrite(relay3, LOW);
- 
+
   Serial.begin(115200);
+  Comport.begin(9600, SERIAL_8N1, 16, 17);
   delay(1000); // give me time to bring up serial monitor
   Serial.println("ESP32 Ready");
   
-  // Initialize sensor (HR sensor)
+  /*// Initialize sensor (HR sensor)
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
   {
     Serial.println("MAX30105 was not found. Please check wiring/power. ");
@@ -112,8 +124,13 @@ void setup()
   particleSensor.setup(); //Configure sensor with default settings
   particleSensor.setPulseAmplitudeRed(0x0A); //Turn Red LED to low to indicate sensor is running
   particleSensor.setPulseAmplitudeGreen(0); //Turn off Green LED
+  */
+
+  
  
 }
+
+
  
 void loop()
 {
@@ -121,9 +138,12 @@ void loop()
   analog_value = analogRead(ANALOG_PIN_0);
   potread = analogRead(Potentio);
   //Serial.print(level);Serial.print(" - ");
-  //Serial.println(potread);
+  //Serial.print("potentio - ");Serial.println(potread);
   //Serial.println(analog_value);
   //Serial.println(digitalRead(TOGGLEMOTOR));
+
+  //Serial.println(count);
+  //Serial.println(analogRead(ANALOG_PIN_0));
   
   //-----------------------------------------------------------------------------------------------------------------------------speed detect reset
   if (analog_value >= 1023 && active == 0){
@@ -146,16 +166,7 @@ void loop()
     if (bikespeed <= 100.00){   //<----- max speed 100km/h (lebih dari itu dianggap 100
     Serial.print ("SPD");
     Serial.println (bikespeed);    
-    /*
-    Serial.print (timing);
-    Serial.print (" distance : ");
-    Serial.print (distance);
-    Serial.print (" KM - ");
-    Serial.print(potread);
-    Serial.print(toppos);
-    Serial.print(bottompos);
-    Serial.print (" - ");
-    Serial.println(level);*/
+
     }
     
     if (standbyMode == 1){ //<----- wake up si game kalau deteksi ban muter
@@ -285,8 +296,66 @@ if (currentMillis - standbyMillis > standbyInterval && currentMillis - standbyMi
 }
 }
 
-//--------------------------------------------------------------------------------------------------------------------- Heart Beat
+//--------------------------------------------------------------------------   Get data from other esp32
+  
+  while(Comport.available()){
+    received = Comport.read();
+    if (received == 80){
+      Serial.print("HB");
+    }
+    if (received > 47 && received < 59){
+      Serial.print(received - 48);
+    }
+    if (received == 81){
+      Serial.println("");
+    }
+  }
+  
+}//-----------------------------------------------------------------------------------------------------------------------void loop close
+ 
+void increase_weight(){
+  digitalWrite(relay2, HIGH);
+  digitalWrite(relay3, LOW);
+}
+ 
+void decrease_weight(){
+  digitalWrite(relay2, LOW);
+  digitalWrite(relay3, HIGH);
+}
+ 
+void stop_weight(){
+  digitalWrite(relay2, LOW);
+  digitalWrite(relay3, LOW);
+}
 
+/*
+void speed_detect(){
+    timing = currentMillis - timingMillis;
+   
+    timingMillis = millis();
+    standbyMillis = millis();
+    
+    timingfloat = timing;
+    bikespeed = 70000/timingfloat*0.036; //<----- dalam KM/H,  70000 itu keliling ban 70cm * 1000 / 3600 konversi m/s ke km/h
+    distance = distance+0.0007; //<----- tambah jarak 70cm per satu rotasi
+    
+    if (bikespeed <= 100.00){   //<----- max speed 100km/h (lebih dari itu dianggap 100
+    Serial.print ("SPD");
+    Serial.println (bikespeed);    
+
+    }
+    
+    if (standbyMode == 1){ //<----- wake up si game kalau deteksi ban muter
+    Serial.println("BTNUP");
+    Serial.println ("BIKE WAKE-UP");
+    standbyMode = 0;  
+    
+    }
+  
+}
+
+
+void heart_beat(){
   long irValue = particleSensor.getIR();
 
 
@@ -311,30 +380,13 @@ if (currentMillis - standbyMillis > standbyInterval && currentMillis - standbyMi
     }
   }
 
-    Serial.print ("HB");
-    Serial.println (beatAvg);
-
     if (irValue < 50000){
     beatAvg=0;
     Serial.println(" No finger?");
+    }
 
+    Serial.print ("HB");
+    Serial.println (beatAvg);  
+    
 }
- 
-}//-----------------------------------------------------------------------------------------------------------------------void loop close
- 
-void increase_weight(){
-  digitalWrite(relay2, HIGH);
-  digitalWrite(relay3, LOW);
-}
- 
-void decrease_weight(){
-  digitalWrite(relay2, LOW);
-  digitalWrite(relay3, HIGH);
-}
- 
-void stop_weight(){
-  digitalWrite(relay2, LOW);
-  digitalWrite(relay3, LOW);
-}
-
-//------------ test adding to github
+*/

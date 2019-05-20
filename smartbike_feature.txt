@@ -1,4 +1,0 @@
-- speed detection (from fly wheel)
-- motor weight adjustment
-- tactile button for controlling weight
-- HR (under devvelopment)
